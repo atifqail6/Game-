@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runner Boy</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#4F46E5',secondary:'#10B981'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <style>
+        :where([class^="ri-"])::before { content: "\f3c2"; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            overflow: hidden;
+        }
+        .game-container {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+        }
+        .ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100px;
+            background-color: #8BC34A;
+            z-index: 2;
+        }
+        .character {
+            position: absolute;
+            bottom: 100px;
+            left: 20%;
+            width: 60px;
+            height: 80px;
+            background-color: #FF5722;
+            border-radius: 8px;
+            z-index: 3;
+            transform-origin: bottom center;
+        }
+        .obstacle {
+            position: absolute;
+            bottom: 100px;
+            width: 40px;
+            height: 60px;
+            background-color: #795548;
+            border-radius: 8px;
+            z-index: 2;
+        }
+        .cloud {
+            position: absolute;
+            background-color: white;
+            border-radius: 50px;
+            opacity: 0.8;
+            z-index: 1;
+        }
+        .tree {
+            position: absolute;
+            bottom: 100px;
+            width: 30px;
+            height: 80px;
+            background-color: #33691E;
+            border-radius: 4px 4px 0 0;
+            z-index: 1;
+        }
+        .start-screen, .game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+        .hidden {
+            display: none;
+        }
+        .jumping {
+            animation: jump 0.5s ease-out;
+        }
+        .sliding {
+            height: 40px;
+            animation: slide 0.5s ease-out;
+        }
+        @keyframes jump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-150px); }
+            100% { transform: translateY(0); }
+        }
+        @keyframes slide {
+            0% { transform: scaleY(1); }
+            50% { transform: scaleY(0.5); }
+            100% { transform: scaleY(1); }
+        }
+        .custom-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .custom-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #4F46E5;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col items-center justify-center min-h-screen">
+        <div class="game-container w-full max-w-3xl h-[600px] rounded-lg shadow-xl bg-white relative">
+            <!-- Top Bar -->
+            <div class="absolute top-0 left-0 right-0 h-16 bg-white bg-opacity-80 z-10 flex items-center justify-between px-6 rounded-t-lg">
+                <div class="flex items-center">
+                    <div class="text-xl font-bold">Score: <span id="score">0</span></div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm">Sound</span>
+                        <label class="custom-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <button id="pauseBtn" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md">
+                        <i class="ri-pause-line ri-lg"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Game Elements -->
+            <div class="ground"></div>
+            <div class="character"></div>
+            
+            <!-- Start Screen -->
+            <div id="startScreen" class="start-screen">
+                <div class="text-center">
+                    <h1 class="text-4xl font-['Pacifico'] text-white mb-2">Runner Boy</h1>
+                    <p class="text-white mb-8">Tap to jump, swipe down to slide!</p>
+                    <button id="startBtn" class="bg-primary text-white px-8 py-3 rounded-button text-xl font-bold shadow-lg hover:bg-opacity-90 transition">
+                        PLAY
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Game Over Screen -->
+            <div id="gameOverScreen" class="game-over-screen hidden">
+                <div class="text-center">
+                    <h2 class="text-3xl text-white mb-2">Game Over</h2>
+                    <p class="text-white mb-2">Your score: <span id="finalScore">0</span></p>
+                    <p class="text-white mb-6">Best score: <span id="bestScore">0</span></p>
+                    <div class="flex space-x-4">
+                        <button id="playAgainBtn" class="bg-primary text-white px-6 py-2 rounded-button font-bold shadow-lg hover:bg-opacity-90 transition">
+                            Play Again
+                        </button>
+                        <button id="shareBtn" class="bg-white text-primary px-6 py-2 rounded-button font-bold shadow-lg hover:bg-opacity-90 transition">
+                            Share Score
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Controls Hint -->
+            <div class="absolute bottom-4 left-0 right-0 flex justify-center z-10">
+                <div class="bg-white bg-opacity-70 px-4 py-2 rounded-full flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 flex items-center justify-center">
+                            <i class="ri-arrow-up-line ri-lg"></i>
+                        </div>
+                        <span>Jump</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 flex items-center justify-center">
+                            <i class="ri-arrow-down-line ri-lg"></i>
+                        </div>
+                        <span>Slide</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Settings -->
+        <div class="mt-6 bg-white p-6 rounded-lg shadow-md w-full max-w-3xl">
+            <h2 class="text-xl font-bold mb-4">Game Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">Difficulty</label>
+                        <div class="flex space-x-2">
+                            <button class="bg-primary text-white px-4 py-2 rounded-button whitespace-nowrap">Easy</button>
+                            <button class="bg-gray-200 text-gray-700 px-4 py-2 rounded-button whitespace-nowrap">Medium</button>
+                            <button class="bg-gray-200 text-gray-700 px-4 py-2 rounded-button whitespace-nowrap">Hard</button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">Character Color</label>
+                        <div class="flex space-x-3">
+                            <div class="w-8 h-8 bg-red-500 rounded-full cursor-pointer border-2 border-primary"></div>
+                            <div class="w-8 h-8 bg-blue-500 rounded-full cursor-pointer"></div>
+                            <div class="w-8 h-8 bg-green-500 rounded-full cursor-pointer"></div>
+                            <div class="w-8 h-8 bg-yellow-500 rounded-full cursor-pointer"></div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">Game Speed</label>
+                        <input type="range" min="1" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" class="hidden">
+                            <div class="w-5 h-5 border-2 border-gray-400 rounded flex items-center justify-center">
+                                <div class="w-3 h-3 bg-primary hidden"></div>
+                            </div>
+                            <span>Enable power-ups</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const gameContainer = document.querySelector('.game-container');
+            const character = document.querySelector('.character');
+            const ground = document.querySelector('.ground');
+            const scoreDisplay = document.getElementById('score');
+            const finalScoreDisplay = document.getElementById('finalScore');
+            const bestScoreDisplay = document.getElementById('bestScore');
+            const startScreen = document.getElementById('startScreen');
+            const gameOverScreen = document.getElementById('gameOverScreen');
+            const startBtn = document.getElementById('startBtn');
+            const playAgainBtn = document.getElementById('playAgainBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const shareBtn = document.getElementById('shareBtn');
+            
+            let score = 0;
+            let bestScore = 0;
+            let isGameRunning = false;
+            let isPaused = false;
+            let obstacles = [];
+            let clouds = [];
+            let trees = [];
+            let animationId;
+            let obstacleInterval;
+            let cloudInterval;
+            let treeInterval;
+            let gameSpeed = 5;
+            
+            // Initialize game elements
+            function initGame() {
+                score = 0;
+                scoreDisplay.textContent = score;
+                obstacles = [];
+                clouds = [];
+                trees = [];
+                gameSpeed = 5;
+                
+                // Clear existing elements
+                document.querySelectorAll('.obstacle, .cloud, .tree').forEach(el => el.remove());
+                
+                // Create initial clouds and trees
+                for (let i = 0; i < 3; i++) {
+                    createCloud();
+                    createTree();
+                }
+            }
+            
+            // Start game
+            function startGame() {
+                initGame();
+                startScreen.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+                isGameRunning = true;
+                isPaused = false;
+                
+                // Start game loops
+                gameLoop();
+                obstacleInterval = setInterval(createObstacle, 2000);
+                cloudInterval = setInterval(createCloud, 3000);
+                treeInterval = setInterval(createTree, 1500);
+                
+                // Start score counter
+                scoreCounter = setInterval(() => {
+                    if (isGameRunning && !isPaused) {
+                        score++;
+                        scoreDisplay.textContent = score;
+                    }
+                }, 100);
+            }
+            
+            // Game loop
+            function gameLoop() {
+                if (!isGameRunning) return;
+                if (isPaused) {
+                    animationId = requestAnimationFrame(gameLoop);
+                    return;
+                }
+                
+                // Move obstacles
+                obstacles.forEach((obstacle, index) => {
+                    const obstacleLeft = parseInt(window.getComputedStyle(obstacle).getPropertyValue('left'));
+                    obstacle.style.left = (obstacleLeft - gameSpeed) + 'px';
+                    
+                    // Remove off-screen obstacles
+                    if (obstacleLeft < -50) {
+                        obstacle.remove();
+                        obstacles.splice(index, 1);
+                    }
+                    
+                    // Collision detection
+                    if (isColliding(character, obstacle)) {
+                        gameOver();
+                    }
+                });
+                
+                // Move clouds
+                clouds.forEach((cloud, index) => {
+                    const cloudLeft = parseInt(window.getComputedStyle(cloud).getPropertyValue('left'));
+                    cloud.style.left = (cloudLeft - gameSpeed * 0.5) + 'px';
+                    
+                    // Remove off-screen clouds
+                    if (cloudLeft < -100) {
+                        cloud.remove();
+                        clouds.splice(index, 1);
+                    }
+                });
+                
+                // Move trees
+                trees.forEach((tree, index) => {
+                    const treeLeft = parseInt(window.getComputedStyle(tree).getPropertyValue('left'));
+                    tree.style.left = (treeLeft - gameSpeed * 0.8) + 'px';
+                    
+                    // Remove off-screen trees
+                    if (treeLeft < -50) {
+                        tree.remove();
+                        trees.splice(index, 1);
+                    }
+                });
+                
+                // Increase game speed gradually
+                if (score > 0 && score % 100 === 0) {
+                    gameSpeed = Math.min(gameSpeed + 0.1, 10);
+                }
+                
+                animationId = requestAnimationFrame(gameLoop);
+            }
+            
+            // Create obstacle
+            function createObstacle() {
+                if (!isGameRunning || isPaused) return;
+                
+                const obstacle = document.createElement('div');
+                obstacle.classList.add('obstacle');
+                obstacle.style.left = gameContainer.offsetWidth + 'px';
+                
+                // Randomize obstacle height
+                const height = Math.floor(Math.random() * 30) + 40;
+                obstacle.style.height = height + 'px';
+                
+                gameContainer.appendChild(obstacle);
+                obstacles.push(obstacle);
+            }
+            
+            // Create cloud
+            function createCloud() {
+                if (!isGameRunning) return;
+                
+                const cloud = document.createElement('div');
+                cloud.classList.add('cloud');
+                
+                // Randomize cloud properties
+                const width = Math.floor(Math.random() * 100) + 50;
+                const height = Math.floor(Math.random() * 30) + 20;
+                const top = Math.floor(Math.random() * 150) + 20;
+                
+                cloud.style.width = width + 'px';
+                cloud.style.height = height + 'px';
+                cloud.style.top = top + 'px';
+                cloud.style.left = gameContainer.offsetWidth + 'px';
+                
+                gameContainer.appendChild(cloud);
+                clouds.push(cloud);
+            }
+            
+            // Create tree
+            function createTree() {
+                if (!isGameRunning) return;
+                
+                const tree = document.createElement('div');
+                tree.classList.add('tree');
+                
+                // Randomize tree properties
+                const height = Math.floor(Math.random() * 50) + 60;
+                tree.style.height = height + 'px';
+                tree.style.left = gameContainer.offsetWidth + 'px';
+                
+                gameContainer.appendChild(tree);
+                trees.push(tree);
+            }
+            
+            // Character jump
+            function jump() {
+                if (!isGameRunning || isPaused) return;
+                if (character.classList.contains('jumping') || character.classList.contains('sliding')) return;
+                
+                character.classList.add('jumping');
+                setTimeout(() => {
+                    character.classList.remove('jumping');
+                }, 500);
+            }
+            
+            // Character slide
+            function slide() {
+                if (!isGameRunning || isPaused) return;
+                if (character.classList.contains('jumping') || character.classList.contains('sliding')) return;
+                
+                character.classList.add('sliding');
+                setTimeout(() => {
+                    character.classList.remove('sliding');
+                }, 500);
+            }
+            
+            // Collision detection
+            function isColliding(a, b) {
+                const aRect = a.getBoundingClientRect();
+                const bRect = b.getBoundingClientRect();
+                
+                return !(
+                    aRect.top + aRect.height < bRect.top ||
+                    aRect.top > bRect.top + bRect.height ||
+                    aRect.left + aRect.width < bRect.left ||
+                    aRect.left > bRect.left + bRect.width
+                );
+            }
+            
+            // Game over
+            function gameOver() {
+                isGameRunning = false;
+                cancelAnimationFrame(animationId);
+                clearInterval(obstacleInterval);
+                clearInterval(cloudInterval);
+                clearInterval(treeInterval);
+                clearInterval(scoreCounter);
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestScoreDisplay.textContent = bestScore;
+                }
+                
+                finalScoreDisplay.textContent = score;
+                gameOverScreen.classList.remove('hidden');
+            }
+            
+            // Toggle pause
+            function togglePause() {
+                isPaused = !isPaused;
+                pauseBtn.innerHTML = isPaused ? 
+                    '<i class="ri-play-line ri-lg"></i>' : 
+                    '<i class="ri-pause-line ri-lg"></i>';
+            }
+            
+            // Event listeners
+            startBtn.addEventListener('click', startGame);
+            playAgainBtn.addEventListener('click', startGame);
+            pauseBtn.addEventListener('click', togglePause);
+            shareBtn.addEventListener('click', () => {
+                alert('Sharing score: ' + score);
+            });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' || e.code === 'ArrowUp') {
+                    jump();
+                } else if (e.code === 'ArrowDown') {
+                    slide();
+                } else if (e.code === 'Escape') {
+                    togglePause();
+                }
+            });
+            
+            // Touch controls
+            gameContainer.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                const startY = touch.clientY;
+                
+                gameContainer.addEventListener('touchend', function handleTouchEnd(e) {
+                    const touch = e.changedTouches[0];
+                    const endY = touch.clientY;
+                    
+                    if (endY < startY - 50) {
+                        jump();
+                    } else if (endY > startY + 50) {
+                        slide();
+                    } else {
+                        // Simple tap
+                        jump();
+                    }
+                    
+                    gameContainer.removeEventListener('touchend', handleTouchEnd);
+                });
+            });
+            
+            // Click controls for desktop testing
+            gameContainer.addEventListener('click', () => {
+                if (!startScreen.classList.contains('hidden') && !gameOverScreen.classList.contains('hidden')) {
+                    jump();
+                }
+            });
+            
+            // Custom checkbox
+            document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const div = this.nextElementSibling.querySelector('div');
+                    if (this.checked) {
+                        div.classList.remove('hidden');
+                    } else {
+                        div.classList.add('hidden');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
